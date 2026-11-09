@@ -1,0 +1,28 @@
+[project]
+name = "auto-cnpscts"
+version = "0.1.0"
+description = "Пайплайн конспектов из презентаций: задачи и решения через GLM"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pymupdf>=1.25",
+    "httpx>=0.28",
+]
+
+[project.scripts]
+auto-cnpscts = "auto_cnpscts.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12,<1.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "auto_cnpscts"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

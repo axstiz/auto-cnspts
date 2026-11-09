@@ -1,0 +1,18 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+dist/
+
+# uv
+# uv.lock считается артефактом окружения в этом проекте
+
+# секреты
+.env
+.env.*
+
+# файлы конспектов и временные слайды
+conspecty/
+slides_cache/
+*.pdf
