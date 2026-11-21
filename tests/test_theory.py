@@ -1,7 +1,8 @@
 import logging
 
-import pymupdf
 import pytest
+
+from pdfgen import make_pdf
 
 import auto_cnpscts.cli as cli
 from auto_cnpscts.client import ChatResult
@@ -21,15 +22,6 @@ class FakeClient:
     def close(self):
         pass
 
-
-def make_pdf(path, pages):
-    doc = pymupdf.open()
-    for text in pages:
-        page = doc.new_page(width=720, height=405)
-        if text:
-            page.insert_text((50, 50), text, fontsize=18)
-    doc.save(str(path))
-    doc.close()
 
 
 def test_theory_filename_renames_lekciya():

@@ -1,6 +1,7 @@
 import json
-import pymupdf
 import pytest
+
+from pdfgen import make_pdf
 
 from auto_cnpscts.client import ChatResult
 from auto_cnpscts.pipeline import run
@@ -15,15 +16,6 @@ class FakeClient:
         self.calls.append({"system": system, "content": content_parts})
         return ChatResult(text=self.payloads.pop(0))
 
-
-def make_pdf(path, pages):
-    doc = pymupdf.open()
-    for text in pages:
-        page = doc.new_page(width=720, height=405)
-        if text:
-            page.insert_text((50, 50), text, fontsize=18)
-    doc.save(str(path))
-    doc.close()
 
 
 @pytest.fixture

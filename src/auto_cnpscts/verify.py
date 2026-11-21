@@ -27,7 +27,7 @@ MATCH_SYSTEM_TMPL = """{our_list}
 - "variant" — та же задача, но с изменёнными числами.
 - Если близких нет — match: 0, relation: "none". Сопоставляй осторожно.
 Верни только JSON:
-{{"matches": [{{"friend_page": номер первой страницы задачи друга, "match": id или 0, "relation": "same|variant|none", "note": "кратко"}}]}}"""
+{{"matches": [{{"friend_page": номер первой страницы задачи рукописи, "match": id или 0, "relation": "same|variant|none", "note": "кратко"}}]}}"""
 
 
 ANSWER_SYSTEM = """Ты проверяешь, совпадают ли ФИНАЛЬНЫЕ ответы двух решений одной и той же математической задачи.
@@ -176,7 +176,7 @@ def match_tasks(client, friend_tasks: list[FriendTask], ours: list[OurTask], bat
         chunk = friend_tasks[i : i + batch_size]
         if log:
             log.info("match: задачи %d–%d", i + 1, i + len(chunk))
-        content = [text_part("Задачи из рукописного конспекта друга:")]
+        content = [text_part("Задачи из рукописного конспекта студента:")]
         for j, task in enumerate(chunk, start=i):
             content.append(text_part(f"[{j}] страницы {task.pages}: {task.statement}"))
         result = client.chat(content, system=system)
@@ -213,7 +213,7 @@ def check_answers(client, friend_tasks: list[FriendTask], matches: list[dict], o
         content.append(
             text_part(
                 f"[{m['friend_page']}] Условие: {friend.statement}\n"
-                f"Ответ у друга: {friend.final_answer or '(не виден)'}\n"
+                f"Ответ в рукописи: {friend.final_answer or '(не виден)'}\n"
                 f"Ответ у нас: {our.final_answer or '(нет в конспекте)'}"
             )
         )
@@ -238,9 +238,9 @@ def build_report(
     matches: list[dict],
     checks: list[dict],
     ours: list[OurTask],
-    friend_title: str = "Кочкин, практики 1–10",
+    friend_title: str = "рукописный конспект",
 ) -> str:
-    lines = [f"# Сверка с конспектом друга ({friend_title})", "", "Дата: "]
+    lines = [f"# Сверка с рукописным конспектом ({friend_title})", "", "Дата: "]
 
     matched = [m for m in matches if m["match"] and m["relation"] in ("same", "variant")]
     same = [m for m in matched if m["relation"] == "same"]
@@ -253,20 +253,20 @@ def build_report(
         "",
         "## Сводка",
         "",
-        f"- задач у друга: {len(friend_tasks)}",
+        f"- задач в рукописи: {len(friend_tasks)}",
         f"- задач у нас: {len(ours)}",
         f"- совпало: same {len(same)}, variant {len(variant)}",
-        f"- у друга без аналога: {len(nomatch)}",
-        f"- у нас без аналога у друга: {len(our_extra)}",
+        f"- в рукописи без аналога: {len(nomatch)}",
+        f"- у нас без аналога в рукописи: {len(our_extra)}",
     ]
 
-    lines += ["", "## Задачи друга без аналога", ""]
+    lines += ["", "## Задачи рукописи без аналога", ""]
     for m in nomatch:
         task = next((t for t in friend_tasks if t.pages and t.pages[0] == m["friend_page"]), None)
         if task is not None:
             lines.append(f"- стр. {task.pages[0]}: {task.statement}")
 
-    lines += ["", "## Наши задачи без аналога у друга", ""]
+    lines += ["", "## Наши задачи без аналога в рукописи", ""]
     for t in our_extra:
         lines.append(f"- задача {t.id} ({t.slides}): {t.statement}")
 
@@ -276,7 +276,7 @@ def build_report(
         for c in diff:
             friend = next((t for t in friend_tasks if t.pages and t.pages[0] == c["friend_page"]), None)
             if friend is not None:
-                lines.append(f"- стр. {c['friend_page']}: ответ друга `{friend.final_answer}` — {c['note']}")
+                lines.append(f"- стр. {c['friend_page']}: ответ в рукописи `{friend.final_answer}` — {c['note']}")
 
     unclear_conf = [t for t in friend_tasks if t.confidence == "low"]
     if unclear_conf:
@@ -313,13 +313,13 @@ def verify_conspect(friend_pdf, client, out_dir, batch_size: int = 6, log=None) 
 
     images = render_pages(friend_pdf)
     if not images:
-        raise RuntimeError("в PDF друга нет страниц")
+        raise RuntimeError("в PDF рукописи нет страниц")
     ours = load_ours_from_dir(out_dir, log=log)
     if not ours:
         raise RuntimeError(f"в {out_dir} нет задач наших конспектов")
 
     friend_tasks = extract_friend(client, images, batch_size=batch_size, log=log)
-    info("у друга найдено задач: %d", len(friend_tasks))
+    info("в рукописи найдено задач: %d", len(friend_tasks))
 
     matches = match_tasks(client, friend_tasks, ours, log=log)
     info("совпало: %d (same+variant)", sum(1 for m in matches if m["match"]))
@@ -328,7 +328,7 @@ def verify_conspect(friend_pdf, client, out_dir, batch_size: int = 6, log=None) 
     info("проверено ответов: %d", len(checks))
 
     md = build_report(friend_tasks, matches, checks, ours, friend_title=friend_pdf.stem.split(" _")[0])
-    path = out_dir / "Сверка с конспектом друга.md"
+    path = out_dir / "Сверка с рукописным конспектом.md"
     path.write_text(md, encoding="utf-8")
     info("итог: %s", path)
     return path
@@ -361,34 +361,46 @@ def solve_friend_task(client, task: FriendTask, images_by_number: dict[int, Page
 
 
 def parse_toc(text: str) -> dict[int, str]:
-    """Оглавление вида «Практика №1 / дата / тема» -> {1: тема, ...}."""
+    """Оглавление вида «Практика №1 / дата / тема» -> {1: тема, ...}.
+
+    Дата и тема могут быть на одной строке с номером или на следующих
+    строках (порядок строк зависит от текстового слоя).
+    """
     import re
 
     topics: dict[int, str] = {}
-    pattern = re.compile(r"Практика\s*№\s*(\d+)\s*\n\s*\d{2}\.\d{2}\.\d{4}\s*\n\s*([^\n]+)")
-    for m in pattern.finditer(text):
-        topics[int(m.group(1))] = m.group(2).strip()
+    date_or_number = re.compile(r"(\d{2}\.\d{2}\.\d{4}|\d+)")
+    for m in re.finditer(r"Практика\s*№\s*(\d+)", text):
+        n = int(m.group(1))
+        if n in topics:
+            continue
+        for line in re.split(r"[\r\n]+", text[m.end() :]):
+            line = line.strip()
+            if not line or date_or_number.fullmatch(line):
+                continue
+            topics[n] = line
+            break
     return topics
 
 
 def toc_from_pdf(pdf_path) -> dict[int, str]:
     """
     Темы практик из текстового слоя страницы оглавления (обычно стр. 2).
-    Делаем аккуратно: ищем первую страницу с большим числом вхождений «Практика».
+    Ищем страницу с наибольшим числом распарсенных тем среди первых четырёх.
     """
-    import pymupdf
+    import pypdfium2 as pdfium
 
-    doc = pymupdf.open(str(pdf_path))
+    pdf = pdfium.PdfDocument(str(pdf_path))
     try:
         best: dict[int, str] = {}
-        for page in doc[:4]:
-            text = page.get_text("text")
+        for i in range(min(4, len(pdf))):
+            text = pdf[i].get_textpage().get_text_range()
             parsed = parse_toc(text)
             if len(parsed) > len(best):
                 best = parsed
         return best
     finally:
-        doc.close()
+        pdf.close()
 
 
 def _compress_ranges(pages: list[int]) -> str:
@@ -465,7 +477,7 @@ def enrich_conspect(friend_pdf, client, out_dir, batch_size: int = 6, log=None) 
 
     images = render_pages(friend_pdf)
     if not images:
-        raise RuntimeError("в PDF друга нет страниц")
+        raise RuntimeError("в PDF рукописи нет страниц")
     images_by_number = {img.number: img for img in images}
 
     topics = toc_from_pdf(friend_pdf)
@@ -474,7 +486,7 @@ def enrich_conspect(friend_pdf, client, out_dir, batch_size: int = 6, log=None) 
 
     friend_tasks = extract_friend(client, images, batch_size=batch_size, log=log)
     _infer_practice_in_place(friend_tasks)
-    info("у друга найдено задач: %d", len(friend_tasks))
+    info("в рукописи найдено задач: %d", len(friend_tasks))
 
     ours = load_ours_from_dir(out_dir, log=log)
     matches = match_tasks(client, friend_tasks, ours, log=log, strict=True)

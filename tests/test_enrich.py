@@ -1,6 +1,7 @@
 import json
 
 from auto_cnpscts.client import ChatResult
+from pdfgen import make_pdf
 from auto_cnpscts.pdf import PageImage
 from auto_cnpscts.verify import (
     FriendTask,
@@ -25,10 +26,16 @@ def r(payload) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
-def test_parse_toc():
+def test_parse_toc_multiline():
     toc = "1\nПрактика №1\n09.09.2026\nОсновы теории вероятностей и комбинаторика\n2\nПрактика №2\n16.09.2026\nКомбинаторные задачи\n"
     topics = parse_toc(toc)
     assert topics == {1: "Основы теории вероятностей и комбинаторика", 2: "Комбинаторные задачи"}
+
+
+def test_parse_toc_inline_date():
+    toc = "Оглавление\r\n1 Практика №1 09.09.2026\r\nОсновы теории вероятностей\r\n2 Практика №2 16.09.2026\r\nКомбинаторные задачи\r\n"
+    topics = parse_toc(toc)
+    assert topics == {1: "Основы теории вероятностей", 2: "Комбинаторные задачи"}
 
 
 def test_build_practice_files_groups_and_names():
@@ -72,12 +79,8 @@ def test_solve_friend_task_prompt():
 
 def test_enrich_conspect_end_to_end(tmp_path, monkeypatch):
     import auto_cnpscts.verify as verify_mod
-    import pymupdf
 
-    doc = pymupdf.open()
-    doc.new_page(width=720, height=405)
-    doc.save(str(tmp_path / "f.pdf"))
-    doc.close()
+    make_pdf(str(tmp_path / "f.pdf"), [""])
 
     monkeypatch.setattr(verify_mod, "toc_from_pdf", lambda _pdf: {1: "Основы"})
 
@@ -107,12 +110,7 @@ def test_enrich_conspect_end_to_end(tmp_path, monkeypatch):
 
 
 def test_enrich_no_unique_tasks_no_files(tmp_path):
-    import pymupdf
-
-    doc = pymupdf.open()
-    doc.new_page(width=720, height=405)
-    doc.save(str(tmp_path / "f.pdf"))
-    doc.close()
+    make_pdf(str(tmp_path / "f.pdf"), [""])
 
     out = tmp_path / "conspecty"
     out.mkdir()

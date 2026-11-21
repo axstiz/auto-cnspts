@@ -111,10 +111,10 @@ def test_build_report_structure():
         {"friend_page": 7, "match": 0, "relation": "none", "note": "точно нет"},
     ]
     checks = [{"friend_page": 4, "verdict": "ok", "note": ""}]
-    md = build_report(friend_tasks, matches, checks, ours(), friend_title="Кочкин, практики 1–10")
+    md = build_report(friend_tasks, matches, checks, ours(), friend_title="рукописный конспект, практики")
 
-    assert md.startswith("# Сверка с конспектом друга")
-    assert "## Задачи друга без аналога" in md
+    assert md.startswith("# Сверка с рукописным конспектом")
+    assert "## Задачи рукописи без аналога" in md
     assert "Байес" in md
     assert "## Наши задачи без аналога" in md
     assert "## Расхождения ответов" not in md  # расхождений нет

@@ -5,7 +5,8 @@ description = "Пайплайн конспектов из презентаций
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "pymupdf>=1.25",
+    "pypdfium2>=4.30",
+    "pillow>=10.0",
     "httpx>=0.28",
 ]
 

@@ -1,8 +1,9 @@
 import logging
 import json
 
-import pymupdf
 import pytest
+
+from pdfgen import make_pdf
 
 import auto_cnpscts.cli as cli
 from auto_cnpscts.client import ChatResult
@@ -21,15 +22,6 @@ class RecordingClient:
     def close(self):
         pass
 
-
-def make_pdf(path, pages):
-    doc = pymupdf.open()
-    for text in pages:
-        page = doc.new_page(width=720, height=405)
-        if text:
-            page.insert_text((50, 50), text, fontsize=18)
-    doc.save(str(path))
-    doc.close()
 
 
 @pytest.fixture
@@ -77,10 +69,10 @@ def test_verify_writes_report(patched, tmp_path, caplog):
     with caplog.at_level(logging.INFO, logger="auto-cnpscts"):
         rc = cli.main(["verify", "friend.pdf", "--out", str(out)])
     assert rc == 0
-    report = out / "Сверка с конспектом друга.md"
+    report = out / "Сверка с рукописным конспектом.md"
     assert report.exists()
     text = report.read_text(encoding="utf-8")
-    assert "задач у друга: 2" in text
+    assert "задач в рукописи: 2" in text
     assert "задач у нас: 1" in text
     assert "Задача про монеты" in text
     assert "### Решение" not in text  # отчёт использует заголовки своего формата

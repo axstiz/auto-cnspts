@@ -137,9 +137,9 @@ if __name__ == "__main__":
 def verify_main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="auto-cnpscts verify",
-        description="Сверка наших конспектов с конспектом друга (PDF)",
+        description="Сверка наших конспектов с рукописным конспектом (PDF)",
     )
-    parser.add_argument("friend_pdf", type=Path, help="путь к конспекту друга (PDF)")
+    parser.add_argument("friend_pdf", type=Path, help="путь к рукописному конспекту (PDF)")
     parser.add_argument("--out", type=Path, default=Path("presentations") / "conspecty", help="папка с нашими конспектами (по умолчанию presentations/conspecty)")
     parser.add_argument("--model", default=None)
     parser.add_argument("--batch-size", type=int, default=6, help="страниц рукописи на запрос")
@@ -191,9 +191,9 @@ def verify_main(argv=None) -> int:
 def enrich_main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="auto-cnpscts enrich",
-        description="Файлы практик из рукописного конспекта друга: только задачи, которых нет в лекциях",
+        description="Файлы практик из рукописного конспекта: только задачи, которых нет в лекциях",
     )
-    parser.add_argument("friend_pdf", type=Path, help="путь к конспекту друга (PDF)")
+    parser.add_argument("friend_pdf", type=Path, help="путь к рукописному конспекту (PDF)")
     parser.add_argument("--out", type=Path, default=Path("presentations") / "conspecty", help="папка вывода (по умолчанию presentations/conspecty)")
     parser.add_argument("--model", default=None)
     parser.add_argument("--batch-size", type=int, default=6)
