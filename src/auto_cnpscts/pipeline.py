@@ -67,3 +67,71 @@ def run(
     path.write_text(md, encoding="utf-8")
     info("итог: %s", path)
     return path
+
+
+THEORY_SYSTEM = """Ты составляешь теоретическую часть учебного конспекта по математике из слайдов презентации.
+Правила:
+- Выписывай ТОЛЬКО теорию: определения, теоремы, свойства, ключевые формулы, замечания и пояснения к ним.
+- Задачи, упражнения, примеры с числовыми данными и их решения — полностью исключай; слайд целиком про задачу — пропускай.
+- Если к задаче прилагаются общие пояснения/разбор модели (маргинальные вероятности, условная независимость и т.п.) — включай их как теорию, но без упоминания номера задачи: заголовки вида «Задача N» не используй, называй по теме.
+- Сохраняй порядок слайдов; для каждой темы — заголовок уровня 3 (### Название темы).
+- Вся математика — в LaTeX: inline $..., выделенные формулы $$...$$.
+- Не выдумывай теорию, которой нет на слайдах.
+- Ответ — только markdown без обрамляющих пояснений и без ограждений ```."""
+
+
+def theory_filename(pdf_stem: str) -> str:
+    from .assemble import sanitize_filename
+
+    if pdf_stem.startswith("Лекция "):
+        name = "Теория " + pdf_stem[len("Лекция ") :]
+    elif pdf_stem.startswith("Лекция"):
+        name = "Теория " + pdf_stem[len("Лекция") :]
+    else:
+        name = f"Теория — {pdf_stem}"
+    return sanitize_filename(name)
+
+
+def run_theory(
+    pdf_path: Path,
+    client,
+    out_dir: Path,
+    batch_size: int = 8,
+    log=None,
+) -> Path | None:
+    """Извлекает теорию из презентации; возвращает None, если файл уже есть."""
+    from .assemble import clean_theory
+
+    info = (lambda msg, *a: log.info(msg, *a)) if log is not None else (lambda msg, *a: None)
+    images = render_pages(pdf_path)
+    if not images:
+        raise RuntimeError("в PDF нет страниц")
+
+    title = pick_title(pdf_path)
+    if not title:
+        info("текст на 1-м слайде не найден, распознаю заголовок по картинке")
+        title = title_from_image(client, images[0])
+    info("заголовок: %s", title)
+
+    parts: list[str] = []
+    for i in range(0, len(images), batch_size):
+        batch = images[i : i + batch_size]
+        info("theory: слайды %d–%d", batch[0].number, batch[-1].number)
+        content = [text_part(f"Слайды {batch[0].number}–{batch[-1].number}, пронумерованы ниже:")]
+        for image in batch:
+            content.append(text_part(f"слайд {image.number}:"))
+            content.append(image_part(image_b64(image)))
+        result = client.chat(content, system=THEORY_SYSTEM)
+        text = result.text.strip()
+        if text:
+            parts.append(clean_theory(text))
+    if not parts:
+        info("теории на слайдах не нашлось")
+        parts = ["_(теория не извлечена)_"]
+
+    md = f"# {title}\n\nДата: \n\n" + "\n\n".join(parts) + "\n"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{theory_filename(pdf_path.stem)}.md"
+    path.write_text(md, encoding="utf-8")
+    info("итог: %s", path)
+    return path

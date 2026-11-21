@@ -56,6 +56,23 @@ def clean_solution(text: str) -> str:
     return "\n".join(out_lines).strip()
 
 
+def clean_theory(text: str) -> str:
+    """Понижает заголовки #/## до ### (### и глубже не трогает), чистит края."""
+    lines = text.strip().splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    out_lines = []
+    for line in lines:
+        m = _HEADING.match(line.strip())
+        if m and len(m.group("h")) <= 2 and m.group("text").strip():
+            out_lines.append("### " + m.group("text").strip())
+        else:
+            out_lines.append(line)
+    return "\n".join(out_lines).strip()
+
+
 def sanitize_filename(name: str) -> str:
     cleaned = re.sub(r"[<>:\"/\\|?*\x00-\x1f]", " ", name)
     cleaned = re.sub(r"\s+", " ", cleaned)
